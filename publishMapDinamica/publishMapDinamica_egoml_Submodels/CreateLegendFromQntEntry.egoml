@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<script>
+    <property key="dff.charset" value="windows-1252" />
+    <property key="dff.date" value="2020-Jul-21 04:13:21" />
+    <property key="dff.version" value="5.1.0.20200628" />
+    <property key="submodel.group" value="Submodels" />
+    <property key="submodel.import" value='CreateAndAssignCustomCategorizationToMap { { &quot;inputMap&quot; : Map, &quot;MaximumNumberOfCategories&quot; : PositiveIntegerValue, &quot;integerSingleValueLabelFormat&quot; : String, &quot;integerRangeLabelFormat&quot; : String, &quot;fractionalSingleValueLabelFormat&quot; : String, &quot;fractionalRangeLabelFormat&quot; : String, &quot;FirstRedComponent&quot; : NonNegativeIntegerValue, &quot;FirstGreenComponent&quot; : NonNegativeIntegerValue, &quot;FirstBlueComponent&quot; : NonNegativeIntegerValue, &quot;LastRedComponent&quot; : NonNegativeIntegerValue, &quot;LastGreenComponent&quot; : NonNegativeIntegerValue, &quot;LastBlueComponent&quot; : NonNegativeIntegerValue } { &quot;CellType&quot; : CellType, &quot;NullValue&quot; : RealValue, &quot;precision&quot; : PositiveIntegerValue } { &quot;resultingCategoricalMap&quot; : CategoricalMap, &quot;resultingCategories&quot; : Categorization } }' />
+    <property key="submodel.name" value="CreateLegendFromQntEntry" />
+    <functor name="CreateAndAssignCustomCategorizationToMap">
+        <property key="dff.functor.alias" value="createAndAssignCustomCategorizationToMap11404" />
+        <property key="submodel.in.maximumnumberofcategories.advanced" value="no" />
+        <property key="submodel.in.maximumnumberofcategories.description" value="Maximum number of categories in the resulting categorization." />
+        <property key="submodel.in.maximumnumberofcategories.name" value="MaximumNumberOfCategories" />
+        <property key="submodel.in.maximumnumberofcategories.optional" value="no" />
+        <property key="submodel.in.maximumnumberofcategories.order" value="2" />
+        <inputport name="inputMap" peerid="v4" />
+        <inputport name="integerSingleValueLabelFormat">$&quot;(&lt;v1&gt;)&quot;</inputport>
+        <inputport name="integerRangeLabelFormat">$&quot;(&lt;v1&gt; â€“ &lt;v2&gt;)&quot;</inputport>
+        <inputport name="fractionalSingleValueLabelFormat">$&quot;(&lt;v1&gt; â€“ &lt;v2&gt;)&quot;</inputport>
+        <inputport name="fractionalRangeLabelFormat">$&quot;(&lt;v1&gt;.&lt;v2&gt; â€“ &lt;v3&gt;.&lt;v4&gt;)&quot;</inputport>
+        <inputport name="FirstRedComponent">40</inputport>
+        <inputport name="FirstGreenComponent">45</inputport>
+        <inputport name="FirstBlueComponent">35</inputport>
+        <inputport name="LastRedComponent">225</inputport>
+        <inputport name="LastGreenComponent">245</inputport>
+        <inputport name="LastBlueComponent">225</inputport>
+        <inputport name="CellType">.uint8</inputport>
+        <inputport name="NullValue">255</inputport>
+        <inputport name="precision">4</inputport>
+        <outputport name="resultingCategories" id="v1" />
+    </functor>
+    <functor name="Table">
+        <property key="dff.functor.alias" value="table14043" />
+        <inputport name="constant" peerid="v1" />
+        <outputport name="object" id="v2" />
+    </functor>
+    <functor name="ExtractStructTable">
+        <property key="dff.functor.alias" value="extractStructTable18146" />
+        <property key="submodel.out.table.description" value="Categories to use as input for Web Publishing" />
+        <property key="submodel.out.table.name" value="categoriesAsCsv" />
+        <property key="submodel.out.table.order" value="1" />
+        <inputport name="struct" peerid="v5" />
+        <inputport name="name">$&quot;(legendTable)&quot;</inputport>
+    </functor>
+    <functor name="ExtractStructTable">
+        <property key="dff.functor.alias" value="extractStructTable18146" />
+        <inputport name="struct" peerid="v5" />
+        <inputport name="name">$&quot;(categories)&quot;</inputport>
+        <outputport name="table" id="v3" />
+    </functor>
+    <functor name="Map">
+        <property key="dff.functor.alias" value="Input Map" />
+        <property key="dff.functor.comment" value="Map to generate legend" />
+        <property key="submodel.in.constant.advanced" value="no" />
+        <property key="submodel.in.constant.description" value="Map to generate legend" />
+        <property key="submodel.in.constant.name" value="inputMap" />
+        <property key="submodel.in.constant.optional" value="no" />
+        <property key="submodel.in.constant.order" value="1" />
+        <outputport name="object" id="v4" />
+    </functor>
+    <functor name="Categories">
+        <property key="dff.functor.alias" value="Generated Categories" />
+        <property key="dff.functor.comment" value="Generated Categories" />
+        <property key="submodel.out.object.description" value="Generated Categories" />
+        <property key="submodel.out.object.name" value="generatedCategories" />
+        <property key="submodel.out.object.order" value="2" />
+        <inputport name="constant" peerid="v3" />
+    </functor>
+    <containerfunctor name="CalculatePythonExpression">
+        <property key="dff.container.collapsed" value="no" />
+        <property key="dff.functor.alias" value="calculatePythonExpression2698" />
+        <inputport name="expression">&quot;aW1wb3J0IGpzb24KaW1wb3J0IG1hdGgKCmNzdkxlZ2VuZCA9IGRpbmFtaWNhLmlucHV0c1sidDEiXQpwcmludChqc29uLmR1bXBzKGNzdkxlZ2VuZCkpCgpoZWFkID0gY3N2TGVnZW5kWzBdCm5ld0xlZ2VuZCA9IFtbJ0NhdGVnb3J5KicsICdGcm9tJywgJ1RvJywgJ0NhdGVnb3J5X05hbWUnLCAncmVkJywgJ2dyZWVuJywgJ2JsdWUnXV0KCmxlZ2VuZCA9IFtbMCwgMCwgMjU1XSxbMCwgMiwgMjU1XSxbMCwgNSwgMjU1XSxbMCwgOCwgMjU1XSxbMCwgMTEsIDI1NV0sWzAsIDE0LCAyNTVdLFswLCAxNywgMjU1XSxbMCwgMjAsIDI1NV0sWzAsIDIzLCAyNTVdLAogICAgICAgIFswLCAyNiwgMjU1XSxbMCwgMjksIDI1NV0sWzAsIDMyLCAyNTVdLFswLCAzNSwgMjU1XSxbMCwgMzgsIDI1NV0sWzAsIDQxLCAyNTVdLFswLCA0NCwgMjU1XSxbMCwgNDcsIDI1NV0sWzAsIDUwLCAyNTVdLAogICAgICAgIFswLCA1MywgMjU1XSxbMCwgNTYsIDI1NV0sWzAsIDU5LCAyNTVdLFswLCA2MiwgMjU1XSxbMCwgNjUsIDI1NV0sWzAsIDY4LCAyNTVdLFswLCA3MSwgMjU1XSxbMCwgNzQsIDI1NV0sWzAsIDc3LCAyNTVdLAogICAgICAgIFswLCA4MCwgMjU1XSxbMCwgODMsIDI1NV0sWzAsIDg2LCAyNTVdLFswLCA4OSwgMjU1XSxbMCwgOTIsIDI1NV0sWzAsIDk1LCAyNTVdLFswLCA5OCwgMjU1XSxbMCwgMTAxLCAyNTVdLFswLCAxMDQsIDI1NV0sCiAgICAgICAgWzAsIDEwNywgMjU1XSxbMCwgMTEwLCAyNTVdLFswLCAxMTMsIDI1NV0sWzAsIDExNiwgMjU1XSxbMCwgMTE5LCAyNTVdLFswLCAxMjIsIDI1NV0sWzAsIDEyNSwgMjU1XSxbMCwgMTI4LCAyNTVdLAogICAgICAgIFswLCAxMzEsIDI1NV0sWzAsIDEzNCwgMjU1XSxbMCwgMTM3LCAyNTVdLFswLCAxNDAsIDI1NV0sWzAsIDE0MywgMjU1XSxbMCwgMTQ2LCAyNTVdLFswLCAxNDksIDI1NV0sWzAsIDE1MiwgMjU1XSwKICAgICAgICBbMCwgMTU1LCAyNTVdLFswLCAxNTgsIDI1NV0sWzAsIDE2MSwgMjU1XSxbMCwgMTY0LCAyNTVdLFswLCAxNjcsIDI1NV0sWzAsIDE3MCwgMjU1XSxbMCwgMTczLCAyNTVdLFswLCAxNzYsIDI1NV0sCiAgICAgICAgWzAsIDE3OSwgMjU1XSxbMCwgMTgyLCAyNTVdLFswLCAxODUsIDI1NV0sWzAsIDE4OCwgMjU1XSxbMCwgMTkxLCAyNTVdLFswLCAxOTQsIDI1NV0sWzAsIDE5NywgMjU1XSxbMCwgMjAwLCAyNTVdLAogICAgICAgIFswLCAyMDMsIDI1NV0sWzAsIDIwNiwgMjU1XSxbMCwgMjA5LCAyNTVdLFswLCAyMTIsIDI1NV0sWzAsIDIxNSwgMjU1XSxbMCwgMjE4LCAyNTVdLFswLCAyMjEsIDI1NV0sWzAsIDIyNCwgMjU1XSwKICAgICAgICBbMCwgMjI3LCAyNTVdLFswLCAyMzAsIDI1NV0sWzAsIDIzMywgMjU1XSxbMCwgMjM2LCAyNTVdLFswLCAyMzksIDI1NV0sWzAsIDI0MiwgMjU1XSxbMCwgMjQ1LCAyNTVdLFswLCAyNDgsIDI1NV0sCiAgICAgICAgWzAsIDI1MSwgMjU1XSxbMCwgMjU1LCAyNTVdLFsyLCAyNTUsIDI1M10sWzUsIDI1NSwgMjUwXSxbOCwgMjU1LCAyNDddLFsxMSwgMjU1LCAyNDRdLFsxNCwgMjU1LCAyNDFdLFsxNywgMjU1LCAyMzhdLAogICAgICAgIFsyMCwgMjU1LCAyMzVdLFsyMywgMjU1LCAyMzJdLFsyNiwgMjU1LCAyMjldLFsyOSwgMjU1LCAyMjZdLFszMiwgMjU1LCAyMjNdLFszNSwgMjU1LCAyMjBdLFszOCwgMjU1LCAyMTddLFs0MSwgMjU1LCAyMTRdLAogICAgICAgIFs0NCwgMjU1LCAyMTFdLFs0NywgMjU1LCAyMDhdLFs1MCwgMjU1LCAyMDVdLFs1MywgMjU1LCAyMDJdLFs1NiwgMjU1LCAxOTldLFs1OSwgMjU1LCAxOTZdLFs2MiwgMjU1LCAxOTNdLFs2NSwgMjU1LCAxOTBdLAogICAgICAgIFs2OCwgMjU1LCAxODddLFs3MSwgMjU1LCAxODRdLFs3NCwgMjU1LCAxODFdLFs3NywgMjU1LCAxNzhdLFs4MCwgMjU1LCAxNzVdLFs4MywgMjU1LCAxNzJdLFs4NiwgMjU1LCAxNjldLFs4OSwgMjU1LCAxNjZdLAogICAgICAgIFs5MiwgMjU1LCAxNjNdLFs5NSwgMjU1LCAxNjBdLFs5OCwgMjU1LCAxNTddLFsxMDEsIDI1NSwgMTU0XSxbMTA0LCAyNTUsIDE1MV0sWzEwNywgMjU1LCAxNDhdLFsxMTAsIDI1NSwgMTQ1XSxbMTEzLCAyNTUsIDE0Ml0sCiAgICAgICAgWzExNiwgMjU1LCAxMzldLFsxMTksIDI1NSwgMTM2XSxbMTIyLCAyNTUsIDEzM10sWzEyNSwgMjU1LCAxMzBdLFsxMjgsIDI1NSwgMTI3XSxbMTMxLCAyNTUsIDEyNF0sWzEzNCwgMjU1LCAxMjFdLFsxMzcsIDI1NSwgMTE4XSwKICAgICAgICBbMTQwLCAyNTUsIDExNV0sWzE0MywgMjU1LCAxMTJdLFsxNDYsIDI1NSwgMTA5XSxbMTQ5LCAyNTUsIDEwNl0sWzE1MiwgMjU1LCAxMDNdLFsxNTUsIDI1NSwgMTAwXSxbMTU4LCAyNTUsIDk3XSwKICAgICAgICBbMTYxLCAyNTUsIDk0XSxbMTY0LCAyNTUsIDkxXSxbMTY3LCAyNTUsIDg4XSxbMTcwLCAyNTUsIDg1XSxbMTczLCAyNTUsIDgyXSxbMTc2LCAyNTUsIDc5XSxbMTc5LCAyNTUsIDc2XSxbMTgyLCAyNTUsIDczXSwKICAgICAgICBbMTg1LCAyNTUsIDcwXSxbMTg4LCAyNTUsIDY3XSxbMTkxLCAyNTUsIDY0XSxbMTk0LCAyNTUsIDYxXSxbMTk3LCAyNTUsIDU4XSxbMjAwLCAyNTUsIDU1XSxbMjAzLCAyNTUsIDUyXSxbMjA2LCAyNTUsIDQ5XSwKICAgICAgICBbMjA5LCAyNTUsIDQ2XSxbMjEyLCAyNTUsIDQzXSxbMjE1LCAyNTUsIDQwXSxbMjE4LCAyNTUsIDM3XSxbMjIxLCAyNTUsIDM0XSxbMjI0LCAyNTUsIDMxXSxbMjI3LCAyNTUsIDI4XSxbMjMwLCAyNTUsIDI1XSwKICAgICAgICBbMjMzLCAyNTUsIDIyXSxbMjM2LCAyNTUsIDE5XSxbMjM5LCAyNTUsIDE2XSxbMjQyLCAyNTUsIDEzXSxbMjQ1LCAyNTUsIDEwXSxbMjQ4LCAyNTUsIDddLFsyNTEsIDI1NSwgNF0sWzI1NSwgMjU1LCAwXSwKICAgICAgICBbMjU1LCAyNTMsIDBdLFsyNTUsIDI1MCwgMF0sWzI1NSwgMjQ3LCAwXSxbMjU1LCAyNDQsIDBdLFsyNTUsIDI0MSwgMF0sWzI1NSwgMjM4LCAwXSxbMjU1LCAyMzUsIDBdLFsyNTUsIDIzMiwgMF0sWzI1NSwgMjI5LCAwXSwKICAgICAgICBbMjU1LCAyMjYsIDBdLFsyNTUsIDIyMywgMF0sWzI1NSwgMjIwLCAwXSxbMjU1LCAyMTcsIDBdLFsyNTUsIDIxNCwgMF0sWzI1NSwgMjExLCAwXSxbMjU1LCAyMDgsIDBdLFsyNTUsIDIwNSwgMF0sWzI1NSwgMjAyLCAwXSwKICAgICAgICBbMjU1LCAxOTksIDBdLFsyNTUsIDE5NiwgMF0sWzI1NSwgMTkzLCAwXSxbMjU1LCAxOTAsIDBdLFsyNTUsIDE4NywgMF0sWzI1NSwgMTg0LCAwXSxbMjU1LCAxODEsIDBdLFsyNTUsIDE3OCwgMF0sWzI1NSwgMTc1LCAwXSwKICAgICAgICBbMjU1LCAxNzIsIDBdLFsyNTUsIDE2OSwgMF0sWzI1NSwgMTY2LCAwXSxbMjU1LCAxNjMsIDBdLFsyNTUsIDE2MCwgMF0sWzI1NSwgMTU3LCAwXSxbMjU1LCAxNTQsIDBdLFsyNTUsIDE1MSwgMF0sWzI1NSwgMTQ4LCAwXSwKICAgICAgICBbMjU1LCAxNDUsIDBdLFsyNTUsIDE0MiwgMF0sWzI1NSwgMTM5LCAwXSxbMjU1LCAxMzYsIDBdLFsyNTUsIDEzMywgMF0sWzI1NSwgMTMwLCAwXSxbMjU1LCAxMjcsIDBdLFsyNTUsIDEyNCwgMF0sWzI1NSwgMTIxLCAwXSwKICAgICAgICBbMjU1LCAxMTgsIDBdLFsyNTUsIDExNSwgMF0sWzI1NSwgMTEyLCAwXSxbMjU1LCAxMDksIDBdLFsyNTUsIDEwNiwgMF0sWzI1NSwgMTAzLCAwXSxbMjU1LCAxMDAsIDBdLFsyNTUsIDk3LCAwXSxbMjU1LCA5NCwgMF0sCiAgICAgICAgWzI1NSwgOTEsIDBdLFsyNTUsIDg4LCAwXSxbMjU1LCA4NSwgMF0sWzI1NSwgODIsIDBdLFsyNTUsIDc5LCAwXSxbMjU1LCA3NiwgMF0sWzI1NSwgNzMsIDBdLFsyNTUsIDcwLCAwXSxbMjU1LCA2NywgMF0sCiAgICAgICAgWzI1NSwgNjQsIDBdLFsyNTUsIDYxLCAwXSxbMjU1LCA1OCwgMF0sWzI1NSwgNTUsIDBdLFsyNTUsIDUyLCAwXSxbMjU1LCA0OSwgMF0sWzI1NSwgNDYsIDBdLFsyNTUsIDQzLCAwXSxbMjU1LCA0MCwgMF0sCiAgICAgICAgWzI1NSwgMzcsIDBdLFsyNTUsIDM0LCAwXSxbMjU1LCAzMSwgMF0sWzI1NSwgMjgsIDBdLFsyNTUsIDI1LCAwXSxbMjU1LCAyMiwgMF0sWzI1NSwgMTksIDBdLFsyNTUsIDE2LCAwXSxbMjU1LCAxMywgMF0sCiAgICAgICAgWzI1NSwgMTAsIDBdLFsyNTUsIDcsIDBdLFsyNTUsIDQsIDBdLFsyNTUsIDEsIDBdXQpxbnRFbnRyeSA9ICgobGVuKGNzdkxlZ2VuZCkgLSAxKSBpZiAobGVuKGNzdkxlZ2VuZCkgLSAxKSA+IDEgZWxzZSAyKQpkaWZFbnRyeSA9IGxlbihsZWdlbmQpIC8gcW50RW50cnkKCgojIGNzdkxlZ2VuZCA9ICBkaW5hbWljYS5pbnB1dHNbInQxIl0KZm9yIGlSYW5nZSBpbiByYW5nZSgxLCBsZW4oY3N2TGVnZW5kKSk6CiAgICBjdXJMZWdlbmQgPSBjc3ZMZWdlbmRbaVJhbmdlXVsxXS5zcGxpdCgnIOKAkyAnKQogICAgcHJpbnQobWF0aC5mbG9vcihkaWZFbnRyeSooaVJhbmdlLTEpKSkKICAgIGN1ckNvbG9yID0gbGVnZW5kW21hdGguZmxvb3IoZGlmRW50cnkqKGlSYW5nZS0xKSldCiAgICBjdXJMaW5lID0gW2lSYW5nZSwKICAgICAgICAgICAgICAgY3VyTGVnZW5kWzBdLAogICAgICAgICAgICAgICBjdXJMZWdlbmRbMV0gaWYgbGVuKGN1ckxlZ2VuZCkgPj0gMiBlbHNlIGN1ckxlZ2VuZFswXSwKICAgICAgICAgICAgICAgY3N2TGVnZW5kW2lSYW5nZV1bMV0sCiAgICAgICAgICAgICAgIGN1ckNvbG9yWzBdLAogICAgICAgICAgICAgICBjdXJDb2xvclsxXSwKICAgICAgICAgICAgICAgY3VyQ29sb3JbMl1dCiAgICBjc3ZMZWdlbmRbaVJhbmdlXVsyXSA9IGN1ckNvbG9yWzBdCiAgICBjc3ZMZWdlbmRbaVJhbmdlXVszXSA9IGN1ckNvbG9yWzFdCiAgICBjc3ZMZWdlbmRbaVJhbmdlXVs0XSA9IGN1ckNvbG9yWzJdCiAgICAjbmV3TGVnZW5kLmluc2VydCgxLCBjdXJMaW5lKQogICAgbmV3TGVnZW5kLmFwcGVuZChjdXJMaW5lKQoKZGluYW1pY2Eub3V0cHV0c1snbGVnZW5kVGFibGUnXSA9IG5ld0xlZ2VuZApkaW5hbWljYS5vdXRwdXRzWydjYXRlZ29yaWVzJ10gPSBjc3ZMZWdlbmQK&quot;</inputport>
+        <outputport name="result" id="v5" />
+        <functor name="NumberTable">
+            <property key="dff.functor.alias" value="numberTable2699" />
+            <inputport name="table" peerid="v2" />
+            <inputport name="tableNumber">1</inputport>
+        </functor>
+    </containerfunctor>
+</script>

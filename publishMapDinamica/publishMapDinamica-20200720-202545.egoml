@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<script>
+    <property key="dff.charset" value="windows-1252" />
+    <property key="dff.date" value="2020-Jul-15 15:08:16" />
+    <property key="dff.version" value="5.1.0.20200628" />
+    <property key="submodel.import" value='MappiaPreviewMapOnline { { &quot;mapToPreview&quot; : Map, &quot;outputDir&quot; : String } { &quot;rasterPaletteCsv&quot; : Table, &quot;maxZoom&quot; : IntegerValue, &quot;gitRepositoryName&quot; : String, &quot;mapFilenameOrTitle&quot; : String, &quot;maximumNumberOfCategories&quot; : PositiveIntegerValue } { &quot;output&quot; : RealValue } }' />
+    <containerfunctor name="Group">
+        <property key="dff.functor.alias" value="group2740" />
+        <inputport name="sequenceInput">.none</inputport>
+        <functor name="LoadMap">
+            <property key="dff.functor.alias" value="loadMap2705" />
+            <inputport name="filename">&quot;G:/Danilo/Trampo/data_dir/data/mestrado/favorability_rubber.tif&quot;</inputport>
+            <inputport name="nullValue">.none</inputport>
+            <inputport name="storageMode">.default</inputport>
+            <inputport name="suffixDigits">0</inputport>
+            <inputport name="step">.none</inputport>
+            <inputport name="workdir">.none</inputport>
+            <outputport name="map" id="v1" />
+        </functor>
+        <functor name="IntegerValue">
+            <property key="dff.functor.alias" value="max_zoom" />
+            <inputport name="constant">4</inputport>
+            <outputport name="object" id="v2" />
+        </functor>
+        <functor name="String">
+            <property key="dff.functor.alias" value="gitRepository" />
+            <inputport name="constant">$&quot;(Mappia_Dinamica2)&quot;</inputport>
+            <outputport name="object" id="v3" />
+        </functor>
+        <functor name="String">
+            <property key="dff.functor.alias" value="string3877" />
+            <inputport name="constant">$&quot;(outro3)&quot;</inputport>
+            <outputport name="object" id="v4" />
+        </functor>
+        <functor name="Folder">
+            <property key="dff.functor.alias" value="folder6679" />
+            <inputport name="constant">&quot;teste2&quot;</inputport>
+            <outputport name="object" id="v5" />
+        </functor>
+        <functor name="LoadTable">
+            <property key="dff.functor.alias" value="loadTable143661" />
+            <inputport name="filename">&quot;G:/Danilo/Trampo/data_dir/data/mestrado/favorability_rubber.csv&quot;</inputport>
+            <inputport name="uniqueIdKeyColumnCreation">.ifNecessary</inputport>
+            <inputport name="suffixDigits">0</inputport>
+            <inputport name="step">.none</inputport>
+            <inputport name="workdir">.none</inputport>
+        </functor>
+    </containerfunctor>
+    <functor name="String">
+        <property key="dff.functor.alias" value="string4046" />
+        <inputport name="constant" peerid="v6" />
+    </functor>
+    <functor name="MappiaPreviewMapOnline">
+        <property key="dff.functor.alias" value="mappiaPreviewMapOnline169355" />
+        <inputport name="mapToPreview" peerid="v1" />
+        <inputport name="outputDir" peerid="v5" />
+        <inputport name="rasterPaletteCsv">[&#x0A;    &quot;Category*&quot;, &quot;From&quot;, &quot;To&quot;, &quot;Category_Name#str&quot;, &quot;red&quot;, &quot;green&quot;, &quot;blue&quot;, &#x0A;]</inputport>
+        <inputport name="maxZoom" peerid="v2" />
+        <inputport name="gitRepositoryName" peerid="v3" />
+        <inputport name="mapFilenameOrTitle" peerid="v4" />
+        <inputport name="maximumNumberOfCategories">8</inputport>
+        <outputport name="output" id="v6" />
+    </functor>
+</script>

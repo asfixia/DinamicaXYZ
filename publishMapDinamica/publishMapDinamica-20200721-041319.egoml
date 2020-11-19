@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<script>
+    <property key="dff.charset" value="windows-1252" />
+    <property key="dff.date" value="2020-Jul-21 02:26:17" />
+    <property key="dff.version" value="5.1.0.20200628" />
+    <property key="submodel.import" value='MappiaPreviewMapOnline { { &quot;mapToPreview&quot; : Map, &quot;outputDir&quot; : String } { &quot;rasterPaletteCsv&quot; : Table, &quot;maxZoom&quot; : IntegerValue, &quot;gitRepositoryName&quot; : String, &quot;mapFilenameOrTitle&quot; : String, &quot;maximumNumberOfCategories&quot; : PositiveIntegerValue } { &quot;output&quot; : RealValue } }' />
+    <functor name="String">
+        <property key="dff.functor.alias" value="string4046" />
+        <inputport name="constant" peerid="v2" />
+    </functor>
+    <functor name="LoadMap">
+        <property key="dff.functor.alias" value="loadMap136759" />
+        <inputport name="filename">&quot;G:/Danilo/Trampo/data_dir/data/laurel/forest_loss_hansen/forest_loss_hansen.tif&quot;</inputport>
+        <inputport name="nullValue">.none</inputport>
+        <inputport name="storageMode">.default</inputport>
+        <inputport name="suffixDigits">0</inputport>
+        <inputport name="step">.none</inputport>
+        <inputport name="workdir">.none</inputport>
+        <outputport name="map" id="v1" />
+    </functor>
+    <functor name="MappiaPreviewMapOnline">
+        <property key="dff.functor.alias" value="mappiaPreviewMapOnline303425" />
+        <inputport name="mapToPreview" peerid="v1" />
+        <inputport name="outputDir">$&quot;(G:\Danilo\Temp\Dinamica_Example)&quot;</inputport>
+        <inputport name="rasterPaletteCsv">[&#x0A;    &quot;Category*&quot;, &quot;From&quot;, &quot;To&quot;, &quot;Category_Name#str&quot;, &quot;red&quot;, &quot;green&quot;, &quot;blue&quot;, &#x0A;]</inputport>
+        <inputport name="maxZoom">6</inputport>
+        <inputport name="gitRepositoryName">$&quot;(Mappia_Dinamica_tst)&quot;</inputport>
+        <inputport name="mapFilenameOrTitle">$&quot;(New Dinamica Online Example Map)&quot;</inputport>
+        <inputport name="maximumNumberOfCategories">8</inputport>
+        <outputport name="output" id="v2" />
+    </functor>
+</script>
