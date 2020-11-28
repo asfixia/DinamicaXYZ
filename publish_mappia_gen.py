@@ -48,6 +48,10 @@ if isDinamica:
     dinamica.package("GitPython", None, "git")
     dinamica.package("xmltodict")
     dinamica.package("Pillow", None, "PIL")
+else:
+    import requests, xmltodict
+    import git
+    import PIL
 
 try:
     import QMessageBox
@@ -808,31 +812,41 @@ class GitHub:
         return gitExe
 
     @staticmethod
-    def tryPullRepository(repo, user, repository, feedback):
-        GitHub.configUser(repo, user)
+    def tryPullRepository(repo, ghUser, gitRepository, feedback):
+        GitHub.configUser(repo, ghUser)
         try:
             feedback.pushConsoleInfo("Git: Pulling remote repository current state.")
             # UTILS.runLongTask(repo.git.pull, feedback, 'Pease wait, pulling changes.', 30, " -s recursive -X ours " + GitHub.getGitUrl(user, repository) + "master")
-            UTILS.runLongTask(repo.git.pull, feedback, 'Pease wait, pulling changes.', 30, "-s", "recursive", "-X", "ours", GitHub.getGitUrl(user, repository), "master")
+            UTILS.runLongTask(repo.git.pull, feedback, 'Pease wait, pulling changes.', 30, "-s", "recursive", "-X", "ours", GitHub.getGitUrl(ghUser, gitRepository), "master")
             feedback.pushConsoleInfo("Before fetch changes.")
-            UTILS.runLongTask(repo.git.fetch, feedback, 'Please wait, fetching changes.', 30, GitHub.getGitUrl(user, repository), "master")
+            UTILS.runLongTask(repo.git.fetch, feedback, 'Please wait, fetching changes.', 30, GitHub.getGitUrl(ghUser, gitRepository), "master")
             feedback.pushConsoleInfo("Git: Doing checkout.")
             UTILS.runLongTask(repo.git.checkout, feedback, 'Please wait, doing checkout', 30, "--ours")
         except:
             pass
 
     @staticmethod
-    def createRepo(ghRepository, ghUser, ghPass, feedback):
+    def createRepo(ghRepository, ghUser, ghPassword, outputDir, feedback):
+        if len(os.listdir(outputDir)) > 0:
+            Feedback.pushConsoleInfo("Cant use selected folder, its not empty, please select an empty folder.")
+            return False
         payload = {
             'name': ghRepository,
             'description': 'Repository cointaining maps of the mappia publisher.',
             'branch': 'master',
-            'auto_init': 'true'
+            'auto_init': 'false'
         }
         feedback.pushConsoleInfo("Creating the new repository: " + ghRepository)
-        resp = requests.post(GitHub.githubApi + 'user/repos', auth=(ghUser, ghPass), data=json.dumps(payload))
+        resp = requests.post(GitHub.githubApi + 'user/repos', auth=(ghUser, ghPassword), data=json.dumps(payload))
         if resp.status_code == 201:
-            sleep(1)
+            sleep(2)
+            import git
+            repo = GitHub.getRepository(outputDir, ghUser, gitRepository, ghPassword, feedback)
+            with open(os.path.join(outputDir, 'README'), 'w') as f:
+                f.write('empty')
+            repo.git.add(['README'])
+            repo.git.commit(m='Setting master head.')
+            repo.remotes.origin.push()
             return True
         else:
             return False
@@ -909,22 +923,25 @@ class GitHub:
         return GitInteractive.pushChanges(repo, user, repository, password, feedback)
 
     @staticmethod
-    def publishTilesToGitHub(folder, user, repository, feedback, version, password=None):
+    def publishTilesToGitHub(outputDir, ghUser, gitRepository, feedback, version, ghPassword=None):
         import git
         feedback.pushConsoleInfo('Github found commiting to your account.')
 
-        repo = GitHub.getRepository(folder, user, repository, password, feedback)
+        repo = GitHub.getRepository(outputDir, ghUser, gitRepository, ghPassword, feedback)
 
         now = datetime.now()
         # https://stackoverflow.com/questions/6565357/git-push-requires-username-and-password
         repo.git.config("credential.helper", " ", "store")
-        GitHub.tryPullRepository(repo, user, repository, feedback) #Danilo
+        GitHub.tryPullRepository(repo, ghUser, gitRepository, feedback) #Danilo
         feedback.pushConsoleInfo('Git: Add all generated tiles to your repository.')
-        GitHub.addFiles(repo, user, repository, feedback)
+        GitHub.addFiles(repo, ghUser, gitRepository, feedback)
         #feedback.pushConsoleInfo("Git: Mergin.")
         #repo.git.merge("-s recursive", "-X ours")
         #feedback.pushConsoleInfo("Git: Pushing changes.")
-        #repo.git.push(GitHub.getGitUrl(user, repository), "master:refs/heads/master")
+        try:
+            repo.git.push(GitHub.getGitUrl(ghUser, gitRepository), "master:refs/heads/master")
+        except:
+            pass
         if repo.index.diff(None) or repo.untracked_files:
             feedback.pushConsoleInfo("No changes, nothing to commit.")
             return None
@@ -938,7 +955,7 @@ class GitHub:
         # new_tag = repo.create_tag(tag, message='Automatic tag "{0}"'.format(tag))
         # repo.remotes[originName].push(new_tag)
         feedback.pushConsoleInfo("Git: Pushing modifications to remote repository.")
-        GitHub.pushChanges(repo, user, repository, password, feedback)
+        GitHub.pushChanges(repo, ghUser, gitRepository, ghPassword, feedback)
         return None
 
     @staticmethod
@@ -5539,12 +5556,12 @@ def publishMaps(gitExe, ghUser, ghPassword, mustAskUser, gitRepository, outputDi
         exit(1)
     Feedback.pushConsoleInfo("Authentication Confirmed: " + gitExe)
 
-    if not GitHub.existsRepository(ghUser, gitRepository) and not GitHub.createRepo(gitRepository, ghUser, ghPassword, Feedback()):
+    GitHub.prepareEnvironment(gitExe)
+    if not GitHub.existsRepository(ghUser, gitRepository) and not GitHub.createRepo(gitRepository, ghUser, ghPassword, outputDir, Feedback()):
         QMessageBox.error(
             "Error: Failed to create the repository " + gitRepository + ".\nPlease create a one at: https://github.com/new")
         exit(1)
 
-    GitHub.prepareEnvironment(gitExe)
     if not GitHub.isOptionsOk(outputDir, ghUser, gitRepository, Feedback(), ghPassword, mustAskUser):
         QMessageBox.error("Error: Canceling the execution, please select another output folder.")
         exit(1)
@@ -5568,7 +5585,7 @@ def publishMaps(gitExe, ghUser, ghPassword, mustAskUser, gitRepository, outputDi
         webbrowser.open_new(curMapsUrl)
     # #Gera Thumbnail?
 
-curUser = None
+ghUser = None
 ghPassword = None
 mustAskUser = False
 gitExe = ''
@@ -5582,7 +5599,7 @@ openInBrowser = True
 class DinamicaClass:
     inputs = None
 dinamica = DinamicaClass()
-isDinamica = True
+#isDinamica = True
 dinamica.inputs = {"v1": 6.0, "s1": "C:/Users/Danilo/AppData/Local/Temp/EGO6B9.tmp_TEMP\\EGOTmp_29_.tif", "s2": "Mappia_Dinamica_tst", "s3": "G:\\Danilo\\Temp\\Dinamica_Example", "s4": "New Dinamica Online Example Map", "t1": [["Category", "From", "To", "Category_Name", "red", "green", "blue"], [1.0, "3", "5", "3 \u2013 5", 0.0, 0.0, 255.0], [2.0, "6", "7", "6 \u2013 7", 0.0, 107.0, 255.0], [3.0, "8", "9", "8 \u2013 9", 0.0, 218.0, 255.0], [4.0, "10", "11", "10 \u2013 11", 71.0, 255.0, 184.0], [5.0, "12", "13", "12 \u2013 13", 182.0, 255.0, 73.0], [6.0, "14", "15", "14 \u2013 15", 255.0, 220.0, 0.0], [7.0, "16", "16", "16", 255.0, 109.0, 0.0]]}
 
 
@@ -5599,17 +5616,18 @@ if isDinamica:
     print("isDinamica")
 else:
     gitRepository = 'Mappia_Example_p6'
+    gitExe = 'C:\\Users\\Danilo\\AppData\\Local\\Temp\\tmpp5uzno5_\\portablegit\\mingw64\\bin\\git.exe'
     max_zoom = 6
     outputDir = 'C:\\Users\\Danilo\\AppData\\Local\\Temp\\outputDir\\'
-    input_file = "F:\\Danilo\\Trampo\\data_dir\\data\\teste\\iyield_rubber2.tif"  # iyield_rubber.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\teste\\byield_rubber.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.vrt"#"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\prodes\\prodes.vrt" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.tif"
-    sldPath = 'I:\\Danilo\\Trampo\\data_dir\\data\\laurel\\land_use_1992_2015\\land_use_1992_2015_7.sld'
+    input_file = "E:\\Danilo\\Trampo\\data_dir\\data\\teste\\iyield_rubber2.tif"  # iyield_rubber.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\teste\\byield_rubber.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.vrt"#"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\prodes\\prodes.vrt" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.tif"
+    sldPath = 'E:\\Danilo\\Trampo\\data_dir\\data\\laurel\\land_use_1992_2015\\land_use_1992_2015_7.sld'
     legendObj = getLegendFromPath(sldPath)
     realFileName = 'land_use_1992_2015_7'
     print("isNotDinamica")
 
 # if __name__ == '__main__':
 # realFileName
-publishMaps(gitExe, curUser, ghPassword, mustAskUser, gitRepository, outputDir, input_file, layerAttr, operation, max_zoom, downloadLink, cellType, nullValue, openInBrowser, legendObj, realFileName)
+publishMaps(gitExe, ghUser, ghPassword, mustAskUser, gitRepository, outputDir, input_file, layerAttr, operation, max_zoom, downloadLink, cellType, nullValue, openInBrowser, legendObj, realFileName)
 
 try:
     dinamica.outputs['out'] = 1
