@@ -48,10 +48,6 @@ if isDinamica:
     dinamica.package("GitPython", None, "git")
     dinamica.package("xmltodict")
     dinamica.package("Pillow", None, "PIL")
-else:
-    import requests, xmltodict
-    import git
-    import PIL
 
 try:
     import QMessageBox
@@ -357,6 +353,21 @@ class UTILS:
         return total
 
     @staticmethod
+    def getQGISversion():
+        try:
+            from qgis.core import Qgis
+            return Qgis.QGIS_VERSION
+        except:
+            return None
+
+    @staticmethod
+    def isQgisSupported():
+        try:
+            return int(UTILS.getQGISversion()[0]) >= 3
+        except:
+            return True
+
+    @staticmethod
     def checkForCanceled(feedback, msg='Cancelling'):
         if feedback.isCanceled():
             feedback.pushConsoleInfo(msg)
@@ -457,7 +468,7 @@ class UTILS:
         mapExtent = layer.extent()
         projection.validate()
         layer.crs().validate()
-        src_to_proj = QgsCoordinateTransform(layer.crs(), projection, QgsProject.instance().transformContext() if getattr(layer, "transformContext", None) is None else layer.transformContext())
+        src_to_proj = QgsCoordinateTransform(layer.crs(), projection, QgsProject.instance())
         return src_to_proj.transformBoundingBox(mapExtent)
 
     @staticmethod
@@ -482,8 +493,8 @@ class UTILS:
         QgsMessageLog.logMessage(" e ".join([str(lat_deg), str(lon_deg), str(zoom)]), tag="Processing")
         lat_rad = math.radians(lat_deg)
         n = 2.0 ** zoom
-        xtile = int((lon_deg + 180.0) / 360.0 * n)
-        ytile = int((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n)
+        xtile = int(max((lon_deg + 180.0) / 360.0 * n, 0))
+        ytile = int(min((1.0 - math.asinh(math.tan(lat_rad)) / math.pi) / 2.0 * n, n))
         return (xtile, ytile)
 
     # Math functions taken from https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames #spellok
@@ -524,19 +535,38 @@ class UTILS:
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
+    @staticmethod
+    def getGitDefault(gitExe):
+        if gitExe and len(gitExe) > 0 and UTILS.is_exe(gitExe):
+            return gitExe
+        elif UTILS.which("git") is not None:
+            return UTILS.which("git")
+        elif UTILS.which("git.exe") is not None:
+            return UTILS.which("git.exe")
+        elif UTILS.which("bin\\git.exe") is not None:
+            return UTILS.which("bin\\git.exe")
+        for curPath in ['C:\\Program Files\\Git\\bin\\git.exe', '/usr/bin/git', 'C:\\Program Files (x86)\\SmartGit\\git\\bin\\git.exe', os.environ['USERPROFILE'] if 'USERPROFILE' in os.environ else '' + '\\AppData\\Local\\Programs\\Git\\git.exe', (os.environ['USERPROFILE'] if 'USERPROFILE' in os.environ else '') + '\\AppData\\Local\\Programs\\Git\\bin\\git.exe']:
+            if UTILS.is_exe(curPath):
+                return curPath
+        else:
+            return ''
+
     # https://stackoverflow.com/questions/377017/test-if-executable-exists-in-python/12611523
     @staticmethod
     def which(program):
         fpath, fname = os.path.split(program)
-        if fpath:
-            if UTILS.is_exe(program):
-                return program
+        if fpath and UTILS.is_exe(program):
+            return program
+        elif program and UTILS.is_exe(program):
+            return program
+        elif not which(program) is None:
+            return which(program)
         else:
             for path in os.environ["PATH"].split(os.pathsep):
                 exe_file = os.path.join(path, program)
                 if UTILS.is_exe(exe_file):
                     return exe_file
-            for path in UTILS.getenv_system("PATH").split(os.pathsep):
+            for path in UTILS.getenv_system("PATH").split(os.pathsep): #windows
                 exe_file = os.path.join(path, program)
                 if UTILS.is_exe(exe_file):
                     return exe_file
@@ -560,6 +590,84 @@ class UserInterrupted(Exception):
 #         QTimer().singleShot(self.timeout*1000, self.intervalCallback)
 #         super(TimedMessageBox, self).showEvent(event)
 
+# -*- coding: utf-8 -*-
+
+__author__ = "Daniel Roy Greenfeld"
+__email__ = "pydanny@gmail.com"
+__version__ = "0.6.1"
+
+import os
+import sys
+
+try:  # Forced testing
+    from shutil import which
+except ImportError:  # Forced testing
+    # Versions prior to Python 3.3 don't have shutil.which
+
+    def which(cmd, mode=os.F_OK | os.X_OK, path=None):
+        """Given a command, mode, and a PATH string, return the path which
+        conforms to the given mode on the PATH, or None if there is no such
+        file.
+        `mode` defaults to os.F_OK | os.X_OK. `path` defaults to the result
+        of os.environ.get("PATH"), or can be overridden with a custom search
+        path.
+        Note: This function was backported from the Python 3 source code.
+        """
+        # Check that a given file can be accessed with the correct mode.
+        # Additionally check that `file` is not a directory, as on Windows
+        # directories pass the os.access check.
+
+        def _access_check(fn, mode):
+            return os.path.exists(fn) and os.access(fn, mode) and not os.path.isdir(fn)
+
+        # If we're given a path with a directory part, look it up directly
+        # rather than referring to PATH directories. This includes checking
+        # relative to the current directory, e.g. ./script
+        if os.path.dirname(cmd):
+            if _access_check(cmd, mode):
+                return cmd
+
+            return None
+
+        if path is None:
+            path = os.environ.get("PATH", os.defpath)
+        if not path:
+            return None
+
+        path = path.split(os.pathsep)
+
+        if sys.platform == "win32":
+            # The current directory takes precedence on Windows.
+            if os.curdir not in path:
+                path.insert(0, os.curdir)
+
+            # PATHEXT is necessary to check on Windows.
+            pathext = os.environ.get("PATHEXT", "").split(os.pathsep)
+            # See if the given file matches any of the expected path
+            # extensions. This will allow us to short circuit when given
+            # "python.exe". If it does match, only test that one, otherwise we
+            # have to try others.
+            if any(cmd.lower().endswith(ext.lower()) for ext in pathext):
+                files = [cmd]
+            else:
+                files = [cmd + ext.lower() for ext in pathext]
+        else:
+            # On other platforms you don't have things like PATHEXT to tell you
+            # what file suffixes are executable, so just pass on cmd as-is.
+            files = [cmd]
+
+        seen = set()
+        for dir in path:
+            normdir = os.path.normcase(dir)
+            if normdir not in seen:
+                seen.add(normdir)
+                for thefile in files:
+                    name = os.path.join(dir, thefile)
+                    if _access_check(name, mode):
+                        return name
+
+        return None
+
 
 try:
     from GitHub import GitHub
@@ -569,20 +677,18 @@ except:
 import re
 import os
 import random
+import tempfile
 import webbrowser
 import requests
 import time
 import json
 import glob
-import tempfile
 import platform
 import subprocess
 from http import HTTPStatus
 from requests import request
 from datetime import datetime
 from time import sleep
-
-
 
 isDinamica = False
 try:
@@ -598,6 +704,7 @@ except:
     pass #Not in Dinamica Code
 
 try:
+    from .UTILS import UTILS
     from qgis.PyQt.QtWidgets import QMessageBox
 except:
     pass #Not in QGIS
@@ -631,8 +738,9 @@ class GitHub:
         except:
             os.environ["PATH"] = gitProgramFolder + os.pathsep + os.environ["PATH"]
 
+
     @staticmethod
-    def install_git(mustAskUser):
+    def install_git(mustAskUser, feedback):
         def userConfirmed():
             return QMessageBox.Yes == QMessageBox.question(None, "Required GIT executable was not found",
                                                            "Click 'YES' to start download and continue, otherwise please select the executable manually.",
@@ -641,8 +749,12 @@ class GitHub:
 
         if not ("Windows" in platform.system() or "CYGWIN_NT" in platform.system()):
             QMessageBox.question(None, "Failed to find GIT executable", "Please install git in your system and fill the parameter GIT executable path.")
-        if (not mustAskUser or userConfirmed()) == False:
             return ''
+        elif mustAskUser and not userConfirmed():
+            return ''
+
+
+        feedback.pushConsoleInfo("Please wait: downloading a portable Git client. (Needed to communicate with Github).")
 
         def download_file(url, toDir):
             local_filename = os.path.join(toDir, url.split('/')[-1])
@@ -662,7 +774,8 @@ class GitHub:
         portableGit = os.path.join(tmpDir, "portablegit")
         if (not os.path.isfile(selfExtractor)):
             return ''
-        subprocess.check_output([selfExtractor, '-o', portableGit, "-y"])
+        feedback.pushConsoleInfo("Executable downloaded, now extracting it to a temporary folder.")
+        UTILS.runLongTask(subprocess.check_output, feedback, 'Pease wait, pulling changes.', 30, [selfExtractor, '-o', portableGit, "-y"])
         return os.path.join(portableGit, 'mingw64', 'bin', 'git.exe')
 
     @staticmethod
@@ -675,8 +788,17 @@ class GitHub:
         return gitExe
 
     @staticmethod
-    def getRepositorySize(user, repository, password):
-        response = GitHub._request('GET', 'https://api.github.com/repos/' + user + "/" + repository, token=password,
+    def existsRepositoryFile(ghUser, ghRepository, fileRepositoryPath):
+        ghResp = requests.get(GitHub.githubApi + 'repos/' + ghUser + "/" + ghRepository + "/contents/" + fileRepositoryPath)
+        return ghResp.status_code == 200 and 'download_url' in ghResp.json()
+
+
+    """
+    Return the file size if it exists, or None otherwise.
+    """
+    @staticmethod
+    def getRepositorySize(ghUser, ghRepository, ghPassword):
+        response = GitHub._request('GET', GitHub.githubApi + 'repos/' + ghUser + "/" + ghRepository, token=ghPassword,
                                    headers={'Content-Type': 'application/json'})
         try:
             if response.status_code == 200:
@@ -685,6 +807,10 @@ class GitHub:
             print("Failed to get the repository size, ignoring it.")
             return None
         return None
+
+    @staticmethod
+    def getRawGitUrl(githubUser, githubRepository):
+        return "https://raw.githubusercontent.com/" + githubUser + "/" + githubRepository + "/"
 
     @staticmethod
     def getGitUrl(githubUser, githubRepository):
@@ -708,22 +834,23 @@ class GitHub:
         return remote_refs
 
     @staticmethod
-    def existsRepository(user, repository):
+    def existsRepository(ghUser, ghRepository, ghPassword=None):
         try:
-            #feedback.pushConsoleInfo("URL: " + GitHub.getGitUrl(user, repository))
-            resp = requests.get(GitHub.getGitUrl(user, repository))
-            if resp.status_code == 200:
-                return True
-            else:
-                return False
-            #result = GitHub.lsremote(GitHub.getGitUrl(user, repository))
+            resp = requests.get(GitHub.getGitUrl(ghUser, ghRepository))
+            return resp.status_code == 200 or (ghPassword is not None and GitHub.getRepositorySize(ghUser, ghRepository, ghPassword) is not None)
         except:
             return False
 
     @staticmethod
-    def configUser(repo, user):
+    def configUser(repo, user, ghRepository):
         repo.git.config("user.email", user)
         repo.git.config("user.name", user)
+        originName = "mappia"
+        try:
+            repo.git.remote("add", originName, GitHub.getGitUrl(user, ghRepository))
+        except:
+            repo.git.remote("set-url", originName, GitHub.getGitUrl(user, ghRepository))
+        repo.git.config('--global', 'credential.helper', 'store')
 
     @staticmethod
     def getRepository(folder, user, repository, password, feedback):
@@ -732,7 +859,7 @@ class GitHub:
 
         # #Não está funcionando a validação #FIXME Repository creation verification is not working (Modify the create Repo function to verify the creation)
         # #feedback.pushConsoleInfo(user + ' at ' + repository)
-        # if not GitHub.existsRepository(user, repository):
+        # if not GitHub.existsRepository(user, repository, password):
         #     feedback.pushConsoleInfo("The repository " + repository + " doesn't exists.\nPlease create a new one at https://github.com/new .")
         #     return None
 
@@ -762,13 +889,13 @@ class GitHub:
         return repo
 
     @staticmethod
-    def isOptionsOk(folder, user, repository, feedback, ghPassword=None, mustAskUser=False):
+    def isOptionsOk(folder, ghUser, ghRepository, feedback, ghPassword=None, mustAskUser=False):
         try:
             #Cria ou pega o repositório atual.
-            repo = GitHub.getRepository(folder, user, repository, ghPassword, feedback)
+            repo = GitHub.getRepository(folder, ghUser, ghRepository, ghPassword, feedback)
             if not repo:
                 return False
-            GitHub.configUser(repo, user)
+            GitHub.configUser(repo, ghUser, ghRepository)
             if repo.git.status("--porcelain"):
                 response = not mustAskUser or QMessageBox.question(None, "Local repository is not clean.",
                                      "The folder have local changes, we need to fix to continue.\nClick 'DISCARD' to discard changes, 'YES' to commit changes, otherwise click 'CANCEL' to cancel and resolve manually.",
@@ -776,17 +903,13 @@ class GitHub:
                                      defaultButton=QMessageBox.Discard)
                 if not mustAskUser or response == QMessageBox.Yes:
                     feedback.pushConsoleInfo("Pulling remote repository changes to your directory.")
-                    GitHub.tryPullRepository(repo, user, repository, feedback)  # Danilo
+                    GitHub.tryPullRepository(repo, ghUser, ghRepository, feedback)  # Danilo
                     feedback.pushConsoleInfo("Adding all files in folder")
-                    GitHub.addFiles(repo, user, repository, feedback)
+                    GitHub.addFiles(repo, ghUser, ghRepository, feedback)
                     feedback.pushConsoleInfo("Adding all files in folder")
                     GitHub.gitCommit(repo, msg="QGIS - Adding all files in folder " + datetime.now().strftime("%d/%m/%Y %H:%M:%S"), feedback=feedback)
                     feedback.pushConsoleInfo("QGIS - Sending changes to Github")
-                    # try:
-                    #     UTILS.runLongTask(repo.git.pull, feedback, 'Pease wait, pulling changes.', 30)
-                    # except:
-                    #     pass
-                    GitHub.pushChanges(repo, user, repository, ghPassword, feedback)
+                    GitHub.pushChanges(repo, ghUser, ghRepository, ghPassword, feedback)
                 elif response == QMessageBox.Discard:
                     repo.git.clean("-df")
                     repo.git.checkout('--', '.')
@@ -795,7 +918,7 @@ class GitHub:
                     return False
             else:
                 try:
-                    GitHub.tryPullRepository(repo, user, repository, feedback)
+                    GitHub.tryPullRepository(repo, ghUser, ghRepository, feedback)
                     feedback.pushConsoleInfo("Git: Checking out changes.")
                     repo.git.checkout('--', '.')
                 except:
@@ -806,20 +929,27 @@ class GitHub:
             return False
 
     @staticmethod
-    def findGitExe(gitExe, found_git, mustAskUser):
-        if (not gitExe or not os.path.isfile(gitExe)) and (not 'GIT_PYTHON_GIT_EXECUTABLE' in os.environ or not os.path.isfile(os.environ['GIT_PYTHON_GIT_EXECUTABLE'])) and (not found_git or os.path.isfile(found_git)):
-            gitExe = GitHub.install_git(mustAskUser)
-        return gitExe
-
+    def findGitExe(gitExe, found_git, feedback, mustAskUser):
+        if gitExe and UTILS.is_exe(gitExe):
+            return gitExe
+        elif ('GIT_PYTHON_GIT_EXECUTABLE' in os.environ) and UTILS.is_exe(os.environ['GIT_PYTHON_GIT_EXECUTABLE']) and os.path.isfile(os.environ['GIT_PYTHON_GIT_EXECUTABLE']):
+            return os.environ['GIT_PYTHON_GIT_EXECUTABLE']
+        elif UTILS.getGitDefault(gitExe):
+            return UTILS.getGitDefault(gitExe)
+        elif found_git and UTILS.is_exe(found_git) and os.path.isfile(found_git):
+            return found_git
+        else:
+            return GitHub.install_git(mustAskUser, feedback)
+            
     @staticmethod
-    def tryPullRepository(repo, ghUser, gitRepository, feedback):
-        GitHub.configUser(repo, ghUser)
+    def tryPullRepository(repo, user, ghRepository, feedback):
+        GitHub.configUser(repo, user, ghRepository)
         try:
             feedback.pushConsoleInfo("Git: Pulling remote repository current state.")
             # UTILS.runLongTask(repo.git.pull, feedback, 'Pease wait, pulling changes.', 30, " -s recursive -X ours " + GitHub.getGitUrl(user, repository) + "master")
-            UTILS.runLongTask(repo.git.pull, feedback, 'Pease wait, pulling changes.', 30, "-s", "recursive", "-X", "ours", GitHub.getGitUrl(ghUser, gitRepository), "master")
+            UTILS.runLongTask(repo.git.pull, feedback, 'Pease wait, pulling changes.', 30, "-s", "recursive", "-X", "ours", GitHub.getGitUrl(user, ghRepository), "master")
             feedback.pushConsoleInfo("Before fetch changes.")
-            UTILS.runLongTask(repo.git.fetch, feedback, 'Please wait, fetching changes.', 30, GitHub.getGitUrl(ghUser, gitRepository), "master")
+            UTILS.runLongTask(repo.git.fetch, feedback, 'Please wait, fetching changes.', 30, GitHub.getGitUrl(user, ghRepository), "master")
             feedback.pushConsoleInfo("Git: Doing checkout.")
             UTILS.runLongTask(repo.git.checkout, feedback, 'Please wait, doing checkout', 30, "--ours")
         except:
@@ -827,29 +957,51 @@ class GitHub:
 
     @staticmethod
     def createRepo(ghRepository, ghUser, ghPassword, outputDir, feedback):
-        if len(os.listdir(outputDir)) > 0:
-            Feedback.pushConsoleInfo("Cant use selected folder, its not empty, please select an empty folder.")
-            return False
-        payload = {
-            'name': ghRepository,
-            'description': 'Repository cointaining maps of the mappia publisher.',
-            'branch': 'master',
-            'auto_init': 'false'
-        }
-        feedback.pushConsoleInfo("Creating the new repository: " + ghRepository)
-        resp = requests.post(GitHub.githubApi + 'user/repos', auth=(ghUser, ghPassword), data=json.dumps(payload))
-        if resp.status_code == 201:
-            sleep(2)
-            import git
-            repo = GitHub.getRepository(outputDir, ghUser, gitRepository, ghPassword, feedback)
-            with open(os.path.join(outputDir, 'README'), 'w') as f:
-                f.write('empty')
-            repo.git.add(['README'])
-            repo.git.commit(m='Setting master head.')
-            repo.remotes.origin.push()
-            return True
-        else:
-            return False
+            print("password" + ghPassword)
+            if os.path.exists(outputDir) and len(os.listdir(outputDir)) > 0:
+                feedback.pushConsoleInfo("Cant use selected folder, its not empty, please select an empty folder.")
+                return False
+            try:
+                os.makedirs(outputDir)
+            except:
+                pass
+            if not os.path.exists(outputDir):
+                feedback.pushConsoleInfo("Failed to create the directory: " + outputDir + " please create it manually first.")
+                return False
+            payload = {
+                'name': ghRepository,
+                'description': 'Sharing my spatial data on an online platform.',
+                'branch': 'master',
+                'auto_init': 'false'
+            }
+            feedback.pushConsoleInfo("Creating a new repository: " + ghRepository)
+            resp = requests.post(GitHub.githubApi + 'user/repos', auth=(ghUser, ghPassword), data=json.dumps(payload))
+            if resp.status_code == 201:
+                return GitHub.initializeRepository(outputDir, ghUser, ghRepository, ghPassword, feedback)
+            else:
+                return False
+
+    @staticmethod
+    def isRepositoryInitialized(ghUser, ghRepository):
+        return GitHub.existsRepositoryFile(ghUser, ghRepository, 'README.md')
+
+    @staticmethod
+    def initializeRepository(outputDir, ghUser, ghRepository, ghPassword, feedback, waitInitializeTime=4, waitCreateTime=4):
+        feedback.pushConsoleInfo("Please wait, creating repository take some seconds waiting to github update.")
+        sleep(waitCreateTime)
+        import git
+        repo = GitHub.getRepository(outputDir, ghUser, ghRepository, ghPassword, feedback)
+        GitHub.configUser(repo, ghUser, ghRepository)
+        readmeName = 'README.md'
+        with open(os.path.join(outputDir, readmeName), 'w') as f:
+            f.write("\n# {}\n\n Sharing my maps online.\n\n# Maps in this repository\n[List maps in repository]"
+                    "(https://maps.csr.ufmg.br/calculator/?lang=eng&map=&queryid=152&listRepository=Repository"
+                    "&storeurl=https://github.com/{}/{}/)".format(ghRepository, ghUser, ghRepository))
+        repo.git.add(['README.md'])
+        repo.git.commit(m='Mappia initializing master Head.')
+        GitHub.pushChanges(repo, ghUser, ghRepository, ghPassword, feedback)
+        sleep(waitInitializeTime)
+        return GitHub.isRepositoryInitialized(ghUser, ghRepository)
 
     @staticmethod
     def runLongTask(function, feedback, waitMessage="Please Wait", secondsReport=60, *args, **kwArgs):
@@ -906,9 +1058,13 @@ class GitHub:
                 if response == QMessageBox.Yes and not credentials['value']:
                     webbrowser.open(url, 2)
                 elif response != QMessageBox.Yes and not credentials['value']:
-                    return (None, None)
-            return (credentials['value']['user'], credentials['value']['token'])
-        return (curUser, curPass)
+                    print("OPA1")
+                    return [None, None]
+            print("OPA2")
+            print(json.dumps(credentials))
+            return [credentials['value']['user'], credentials['value']['token']]
+        print("OPA3")
+        return [curUser, curPass]
 
     @staticmethod
     def addFiles(repo, user, repository, feedback):
@@ -923,15 +1079,15 @@ class GitHub:
         return GitInteractive.pushChanges(repo, user, repository, password, feedback)
 
     @staticmethod
-    def publishTilesToGitHub(outputDir, ghUser, gitRepository, feedback, version, ghPassword=None):
+    def publishTilesToGitHub(folder, ghUser, gitRepository, feedback, version, password=None):
         import git
         feedback.pushConsoleInfo('Github found commiting to your account.')
 
-        repo = GitHub.getRepository(outputDir, ghUser, gitRepository, ghPassword, feedback)
+        repo = GitHub.getRepository(folder, ghUser, gitRepository, password, feedback)
 
         now = datetime.now()
         # https://stackoverflow.com/questions/6565357/git-push-requires-username-and-password
-        repo.git.config("credential.helper", " ", "store")
+        #repo.git.config("credential.helper", " ", "store") #FIXME git: 'credential-' is not a git command. See 'git --help
         GitHub.tryPullRepository(repo, ghUser, gitRepository, feedback) #Danilo
         feedback.pushConsoleInfo('Git: Add all generated tiles to your repository.')
         GitHub.addFiles(repo, ghUser, gitRepository, feedback)
@@ -945,7 +1101,7 @@ class GitHub:
         if repo.index.diff(None) or repo.untracked_files:
             feedback.pushConsoleInfo("No changes, nothing to commit.")
             return None
-        feedback.pushConsoleInfo("Git: Committing changes. -------------2")
+        feedback.pushConsoleInfo("Git: Committing changes.")
         try:
             GitHub.gitCommit(repo, "QGIS - " + now.strftime("%d/%m/%Y %H:%M:%S") + " version: " + version, feedback)
         except git.exc.GitCommandError as e:
@@ -955,7 +1111,7 @@ class GitHub:
         # new_tag = repo.create_tag(tag, message='Automatic tag "{0}"'.format(tag))
         # repo.remotes[originName].push(new_tag)
         feedback.pushConsoleInfo("Git: Pushing modifications to remote repository.")
-        GitHub.pushChanges(repo, ghUser, gitRepository, ghPassword, feedback)
+        GitHub.pushChanges(repo, ghUser, gitRepository, password, feedback)
         return None
 
     @staticmethod
@@ -1260,11 +1416,6 @@ class GitInteractive() :
 
     @staticmethod
     def addFiles(repo, user, repository, feedback):
-        originName = "mappia"
-        try:
-            repo.git.remote("add", originName, GitHub.getGitUrl(user, repository))
-        except:
-            repo.git.remote("set-url", originName, GitHub.getGitUrl(user, repository))
         return UTILS.runLongTask(repo.git.add, feedback, waitMessage='Please wait, identifying changes on your repository.', secondsReport=30, all=True) # Adiciona todos arquivos
 
 
@@ -4356,8 +4507,10 @@ except:
 
 if not isDinamica:
     try:
-        from .UTILS import UTILS
         from . import xmltodict
+        from .UTILS import UTILS
+        from qgis.PyQt.QtWidgets import QMessageBox
+        from qgis.core import (QgsCoordinateReferenceSystem, QgsProject, QgsPointXY, QgsCoordinateTransform, QgsVectorLayer)
     except:
         pass #Not in QGIS
 
@@ -4371,15 +4524,10 @@ from collections import OrderedDict
 import collections
 from pathlib import Path
 import json
-import os
 import io
-import csv
+import os
 import re
-
-# try:
-#     from qgis.core import (QgsCoordinateReferenceSystem, QgsProject, QgsPointXY, QgsCoordinateTransform, QgsVectorLayer)
-# except:
-#     pass
+import csv
 
 class WMSCapabilities:
 
@@ -4520,21 +4668,21 @@ class WMSCapabilities:
       </Capability>
     </WMT_MS_Capabilities>'''
 
-    # @staticmethod
-    # def convertCoordinateProj(crsProj, fromX, fromY, outputProjected):
-    #
-    #     regex = r"^[ ]*PROJCS"
-    #     isProjected = re.match(regex, crsProj)
-    #
-    #     if (isProjected and outputProjected) or ( not isProjected and  not outputProjected):
-    #         return (fromX, fromY)
-    #     else:
-    #         fProj = QgsCoordinateReferenceSystem()
-    #         fProj.createFromWkt(crsProj)
-    #         tProj = QgsCoordinateReferenceSystem()
-    #         tProj.createFromProj4("+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs" if outputProjected else "+proj=longlat +datum=WGS84 +no_defs ")
-    #         newCoord = QgsCoordinateTransform(fProj, tProj, QgsProject.instance()).transform(QgsPointXY(fromX, fromY), True)
-    #     return (newCoord.x, newCoord.y)
+    @staticmethod
+    def convertCoordinateProj(crsProj, fromX, fromY, outputProjected):
+
+        regex = r"^[ ]*PROJCS"
+        isProjected = re.match(regex, crsProj)
+
+        if (isProjected and outputProjected) or ( not isProjected and  not outputProjected):
+            return (fromX, fromY)
+        else:
+            fProj = QgsCoordinateReferenceSystem()
+            fProj.createFromWkt(crsProj)
+            tProj = QgsCoordinateReferenceSystem()
+            tProj.createFromProj4("+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs" if outputProjected else "+proj=longlat +datum=WGS84 +no_defs ")
+            newCoord = QgsCoordinateTransform(fProj, tProj, QgsProject.instance()).transform(QgsPointXY(fromX, fromY), True)
+        return (newCoord.x, newCoord.y)
 
     @staticmethod
     def getMapKeyword(isShapefile, maxZoom, dlLink=None):
@@ -4744,32 +4892,35 @@ class WMSCapabilities:
         WMSCapabilities.saveCurrentCapabilities(directory, doc)
 
     @staticmethod
+    def updateXMLQGIS(directory, layer, layerTitle, layerAttr, maxZoom, downloadLink):
+        isShapefile = (isinstance(layer, QgsVectorLayer))
+        layerExtents = layer.extent()
+        layerMercatorExtents = UTILS.getMapExtent(layer, QgsCoordinateReferenceSystem('EPSG:4326'))
+        return WMSCapabilities.updateXML(directory, layerExtents, layerMercatorExtents, isShapefile, layerTitle, layerAttr, maxZoom, downloadLink)
+
+    @staticmethod
+    def updateXMLDinamica(directory, layerExtents, layerMercatorExtents, isShapefile, layerTitle, layerAttr, maxZoom, downloadLink):
+        assert isinstance(layerExtents, WMSBBox) and isinstance(layerMercatorExtents, WMSBBox)
+        return WMSCapabilities.updateXML(directory, layerExtents, layerMercatorExtents, isShapefile, layerTitle, layerAttr, maxZoom, downloadLink)
+
+    @staticmethod
     def updateXML(directory, layerExtents, layerMercatorExtents, isShapefile, layerTitle, layerAttr, maxZoom, downloadLink):
         doc = WMSCapabilities.getCurrentCapabilitiesDoc(directory)
 
         filename = UTILS.normalizeName(layerTitle) #layer Name no qgis
 
-        assert isinstance(layerExtents, WMSBBox) and isinstance(layerMercatorExtents, WMSBBox)
 
         # #extents, projection
-        # projMaxX = layer.extent().xMaximum()
         projMaxX = layerExtents.xMaximum()
-        # projMinX = layer.extent().xMinimum()
         projMinX = layerExtents.xMinimum()
-        # projMaxY = layer.extent().yMaximum()
         projMaxY = layerExtents.yMaximum()
-        # projMinY = layer.extent().yMinimum()
         projMinY = layerExtents.yMinimum()
         # llExtent = UTILS.getMapExtent(layer, QgsCoordinateReferenceSystem('EPSG:4326'))
-        # latMaxX = llExtent.xMaximum()
         latMaxX = layerMercatorExtents.xMaximum()
-        # latMinX = llExtent.xMinimum()
         latMinX = layerMercatorExtents.xMinimum()
-        # latMaxY = llExtent.yMaximum()
         latMaxY = layerMercatorExtents.yMaximum()
-        # latMinY = llExtent.yMinimum()
         latMinY = layerMercatorExtents.yMinimum()
-        #isShapefile = (isinstance(layer, QgsVectorLayer))
+        # isShapefile = (isinstance(layer, QgsVectorLayer))
 
 
         if 'Layer' in doc['WMT_MS_Capabilities']['Capability']['Layer']:
@@ -5009,8 +5160,10 @@ except:
 
 if not isDinamica:
     try:
-        from .UTILS import UTILS
         from . import xmltodict
+        from .UTILS import UTILS
+        from qgis.PyQt.QtWidgets import QMessageBox
+        from qgis.core import (QgsCoordinateReferenceSystem, QgsProject, QgsPointXY, QgsCoordinateTransform, QgsVectorLayer)
     except:
         pass #Not in QGIS
 
@@ -5024,15 +5177,10 @@ from collections import OrderedDict
 import collections
 from pathlib import Path
 import json
-import os
 import io
-import csv
+import os
 import re
-
-# try:
-#     from qgis.core import (QgsCoordinateReferenceSystem, QgsProject, QgsPointXY, QgsCoordinateTransform, QgsVectorLayer)
-# except:
-#     pass
+import csv
 
 class WMSCapabilities:
 
@@ -5173,21 +5321,21 @@ class WMSCapabilities:
       </Capability>
     </WMT_MS_Capabilities>'''
 
-    # @staticmethod
-    # def convertCoordinateProj(crsProj, fromX, fromY, outputProjected):
-    #
-    #     regex = r"^[ ]*PROJCS"
-    #     isProjected = re.match(regex, crsProj)
-    #
-    #     if (isProjected and outputProjected) or ( not isProjected and  not outputProjected):
-    #         return (fromX, fromY)
-    #     else:
-    #         fProj = QgsCoordinateReferenceSystem()
-    #         fProj.createFromWkt(crsProj)
-    #         tProj = QgsCoordinateReferenceSystem()
-    #         tProj.createFromProj4("+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs" if outputProjected else "+proj=longlat +datum=WGS84 +no_defs ")
-    #         newCoord = QgsCoordinateTransform(fProj, tProj, QgsProject.instance()).transform(QgsPointXY(fromX, fromY), True)
-    #     return (newCoord.x, newCoord.y)
+    @staticmethod
+    def convertCoordinateProj(crsProj, fromX, fromY, outputProjected):
+
+        regex = r"^[ ]*PROJCS"
+        isProjected = re.match(regex, crsProj)
+
+        if (isProjected and outputProjected) or ( not isProjected and  not outputProjected):
+            return (fromX, fromY)
+        else:
+            fProj = QgsCoordinateReferenceSystem()
+            fProj.createFromWkt(crsProj)
+            tProj = QgsCoordinateReferenceSystem()
+            tProj.createFromProj4("+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs" if outputProjected else "+proj=longlat +datum=WGS84 +no_defs ")
+            newCoord = QgsCoordinateTransform(fProj, tProj, QgsProject.instance()).transform(QgsPointXY(fromX, fromY), True)
+        return (newCoord.x, newCoord.y)
 
     @staticmethod
     def getMapKeyword(isShapefile, maxZoom, dlLink=None):
@@ -5397,32 +5545,35 @@ class WMSCapabilities:
         WMSCapabilities.saveCurrentCapabilities(directory, doc)
 
     @staticmethod
+    def updateXMLQGIS(directory, layer, layerTitle, layerAttr, maxZoom, downloadLink):
+        isShapefile = (isinstance(layer, QgsVectorLayer))
+        layerExtents = layer.extent()
+        layerMercatorExtents = UTILS.getMapExtent(layer, QgsCoordinateReferenceSystem('EPSG:4326'))
+        return WMSCapabilities.updateXML(directory, layerExtents, layerMercatorExtents, isShapefile, layerTitle, layerAttr, maxZoom, downloadLink)
+
+    @staticmethod
+    def updateXMLDinamica(directory, layerExtents, layerMercatorExtents, isShapefile, layerTitle, layerAttr, maxZoom, downloadLink):
+        assert isinstance(layerExtents, WMSBBox) and isinstance(layerMercatorExtents, WMSBBox)
+        return WMSCapabilities.updateXML(directory, layerExtents, layerMercatorExtents, isShapefile, layerTitle, layerAttr, maxZoom, downloadLink)
+
+    @staticmethod
     def updateXML(directory, layerExtents, layerMercatorExtents, isShapefile, layerTitle, layerAttr, maxZoom, downloadLink):
         doc = WMSCapabilities.getCurrentCapabilitiesDoc(directory)
 
         filename = UTILS.normalizeName(layerTitle) #layer Name no qgis
 
-        assert isinstance(layerExtents, WMSBBox) and isinstance(layerMercatorExtents, WMSBBox)
 
         # #extents, projection
-        # projMaxX = layer.extent().xMaximum()
         projMaxX = layerExtents.xMaximum()
-        # projMinX = layer.extent().xMinimum()
         projMinX = layerExtents.xMinimum()
-        # projMaxY = layer.extent().yMaximum()
         projMaxY = layerExtents.yMaximum()
-        # projMinY = layer.extent().yMinimum()
         projMinY = layerExtents.yMinimum()
         # llExtent = UTILS.getMapExtent(layer, QgsCoordinateReferenceSystem('EPSG:4326'))
-        # latMaxX = llExtent.xMaximum()
         latMaxX = layerMercatorExtents.xMaximum()
-        # latMinX = llExtent.xMinimum()
         latMinX = layerMercatorExtents.xMinimum()
-        # latMaxY = llExtent.yMaximum()
         latMaxY = layerMercatorExtents.yMaximum()
-        # latMinY = llExtent.yMinimum()
         latMinY = layerMercatorExtents.yMinimum()
-        #isShapefile = (isinstance(layer, QgsVectorLayer))
+        # isShapefile = (isinstance(layer, QgsVectorLayer))
 
 
         if 'Layer' in doc['WMT_MS_Capabilities']['Capability']['Layer']:
@@ -5544,11 +5695,14 @@ def writeLegendJson(mapDir, legendObj):
 def getLegendFromPath(sldPath):
     return readLegend(sldPath)
 
-def publishMaps(gitExe, ghUser, ghPassword, mustAskUser, gitRepository, outputDir, input_file, layerAttr, operation, max_zoom, downloadLink, cellType, nullValue, openInBrowser, legendObj, filenameTitle):
+def publishMaps(gitExe, ghUser, ghPassword, mustAskUser, ghRepository, outputDir, input_file, layerAttr, operation, max_zoom, downloadLink, cellType, nullValue, openInBrowser, legendObj, filenameTitle):
     gitExe = gitExe if os.path.isfile(gitExe) else UTILS.which("git.exe")  # Danilo testar qnd não acha o git.exe
     foundGit = ''
-    gitExe = GitHub.findGitExe(gitExe, foundGit, mustAskUser)
+    feedback = Feedback()
+    gitExe = GitHub.findGitExe(gitExe, foundGit, feedback, mustAskUser)
     checkGitExecutable(gitExe)
+    if gitExe:
+        GitHub.prepareEnvironment(gitExe)
     Feedback.pushConsoleInfo("Git executable path found: " + gitExe)
     ghUser, ghPassword = GitHub.getGitCredentials(ghUser, ghPassword, mustAskUser)
     if ghUser is None or ghPassword is None:
@@ -5556,13 +5710,14 @@ def publishMaps(gitExe, ghUser, ghPassword, mustAskUser, gitRepository, outputDi
         exit(1)
     Feedback.pushConsoleInfo("Authentication Confirmed: " + gitExe)
 
-    GitHub.prepareEnvironment(gitExe)
-    if not GitHub.existsRepository(ghUser, gitRepository) and not GitHub.createRepo(gitRepository, ghUser, ghPassword, outputDir, Feedback()):
+    if ((not GitHub.existsRepository(ghUser, ghRepository, ghPassword) and not GitHub.createRepo(ghRepository, ghUser, ghPassword, outputDir, Feedback()))
+            or (GitHub.existsRepository(ghUser, ghRepository, ghPassword) and not GitHub.isRepositoryInitialized(ghUser, ghRepository)
+                and not GitHub.initializeRepository(outputDir, ghUser, ghRepository, ghPassword, feedback))):
         QMessageBox.error(
-            "Error: Failed to create the repository " + gitRepository + ".\nPlease create a one at: https://github.com/new")
+            "Error: Failed to create the repository " + ghRepository + ".\nPlease create a one at: https://github.com/new")
         exit(1)
 
-    if not GitHub.isOptionsOk(outputDir, ghUser, gitRepository, Feedback(), ghPassword, mustAskUser):
+    if not GitHub.isOptionsOk(outputDir, ghUser, ghRepository, Feedback(), ghPassword, mustAskUser):
         QMessageBox.error("Error: Canceling the execution, please select another output folder.")
         exit(1)
 
@@ -5578,14 +5733,14 @@ def publishMaps(gitExe, ghUser, ghPassword, mustAskUser, gitRepository, outputDi
     layerExtents = WMSBBox(*GDAL_UTILS.getExtent(input_file))
     layerMercatorExtents = WMSBBox(*GDAL_UTILS.getExtent(input_file, 4326))
     WMSCapabilities.updateXML(outputDir, layerExtents, layerMercatorExtents, False, layerTitle, layerAttr, max_zoom, downloadLink)
-    GitHub.publishTilesToGitHub(outputDir, ghUser, gitRepository, Feedback(), version, ghPassword)
+    GitHub.publishTilesToGitHub(outputDir, ghUser, ghRepository, Feedback(), version, ghPassword)
     if openInBrowser:
-        storeUrl = GitHub.getGitUrl(ghUser, gitRepository)
+        storeUrl = GitHub.getGitUrl(ghUser, ghRepository)
         curMapsUrl = "https://maps.csr.ufmg.br/calculator/?queryid=152&storeurl=" + storeUrl + "/&remotemap=" + "GH:" + layerTitle + ";" + layerAttr
         webbrowser.open_new(curMapsUrl)
     # #Gera Thumbnail?
 
-ghUser = None
+curUser = None
 ghPassword = None
 mustAskUser = False
 gitExe = ''
@@ -5596,11 +5751,11 @@ cellType = 'int32'
 nullValue = -128
 openInBrowser = True
 
-class DinamicaClass:
-    inputs = None
-dinamica = DinamicaClass()
-#isDinamica = True
-dinamica.inputs = {"v1": 6.0, "s1": "C:/Users/Danilo/AppData/Local/Temp/EGO6B9.tmp_TEMP\\EGOTmp_29_.tif", "s2": "Mappia_Dinamica_tst", "s3": "G:\\Danilo\\Temp\\Dinamica_Example", "s4": "New Dinamica Online Example Map", "t1": [["Category", "From", "To", "Category_Name", "red", "green", "blue"], [1.0, "3", "5", "3 \u2013 5", 0.0, 0.0, 255.0], [2.0, "6", "7", "6 \u2013 7", 0.0, 107.0, 255.0], [3.0, "8", "9", "8 \u2013 9", 0.0, 218.0, 255.0], [4.0, "10", "11", "10 \u2013 11", 71.0, 255.0, 184.0], [5.0, "12", "13", "12 \u2013 13", 182.0, 255.0, 73.0], [6.0, "14", "15", "14 \u2013 15", 255.0, 220.0, 0.0], [7.0, "16", "16", "16", 255.0, 109.0, 0.0]]}
+# class DinamicaClass:
+#     inputs = None
+# dinamica = DinamicaClass()
+# isDinamica = True
+# dinamica.inputs = {"v1": 4.0, "s1": "C:/Users/Danilo/AppData/Local/Temp/EGO96D7.tmp_TEMP\\EGOTmp_36_.tif", "s2": "Mappia_Dinamica2", "s3": "C:/Users/Danilo/AppData/Local/Temp/teste2", "s4": "outro2", "t1": [["Category", "From", "To", "Category_Name", "red", "green", "blue"], [1.0, "0.1166", "0.3548", "0.1166 \u2013 0.3548", 0.0, 0.0, 255.0], [2.0, "0.3549", "0.5868", "0.3549 \u2013 0.5868", 0.0, 107.0, 255.0], [3.0, "0.5869", "0.7783", "0.5869 \u2013 0.7783", 0.0, 218.0, 255.0], [4.0, "0.7784", "0.9006", "0.7784 \u2013 0.9006", 71.0, 255.0, 184.0], [5.0, "0.9007", "0.9600", "0.9007 \u2013 0.9600", 182.0, 255.0, 73.0], [6.0, "0.9601", "0.9940", "0.9601 \u2013 0.9940", 255.0, 220.0, 0.0], [7.0, "0.9941", "1.0", "0.9941 \u2013 1.0", 255.0, 109.0, 0.0]]}
 
 
 if isDinamica:
@@ -5615,8 +5770,7 @@ if isDinamica:
     legendObj = prepareLegend(csvInput)
     print("isDinamica")
 else:
-    gitRepository = 'Mappia_Example_p6'
-    gitExe = 'C:\\Users\\Danilo\\AppData\\Local\\Temp\\tmpp5uzno5_\\portablegit\\mingw64\\bin\\git.exe'
+    gitRepository = 'Mappia_Example_p6asdaz'
     max_zoom = 6
     outputDir = 'C:\\Users\\Danilo\\AppData\\Local\\Temp\\outputDir\\'
     input_file = "E:\\Danilo\\Trampo\\data_dir\\data\\teste\\iyield_rubber2.tif"  # iyield_rubber.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\teste\\byield_rubber.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.vrt"#"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\prodes\\prodes.vrt" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.tif"
@@ -5627,7 +5781,11 @@ else:
 
 # if __name__ == '__main__':
 # realFileName
-publishMaps(gitExe, ghUser, ghPassword, mustAskUser, gitRepository, outputDir, input_file, layerAttr, operation, max_zoom, downloadLink, cellType, nullValue, openInBrowser, legendObj, realFileName)
+
+curUser = 'asfixia'
+ghPassword = '9e9805573b5af294e24dd50caf6e1fda9ad56a92'
+gitExe = 'C:\\Users\\Danilo\\AppData\\Local\\Temp\\tmpi3pm8k1v\\portablegit\\mingw64\\bin\\git.exe'
+publishMaps(gitExe, curUser, ghPassword, mustAskUser, gitRepository, outputDir, input_file, layerAttr, operation, max_zoom, downloadLink, cellType, nullValue, openInBrowser, legendObj, realFileName)
 
 try:
     dinamica.outputs['out'] = 1

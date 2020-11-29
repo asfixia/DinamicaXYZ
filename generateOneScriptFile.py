@@ -34,7 +34,7 @@ def generateOneFileScript(filePath, destPath):
 
 
 
-filePath = 'F:\\Danilo\\Programacao\\python\\DinamicaXYZ\\publish_mappia.py'
-destPath = 'F:\\Danilo\\Programacao\\python\\DinamicaXYZ\\publish_mappia_gen.py'
+filePath = 'E:\\Danilo\\Programacao\\python\\DinamicaXYZ\\publish_mappia.py'
+destPath = 'E:\\Danilo\\Programacao\\python\\DinamicaXYZ\\publish_mappia_gen.py'
 
 generateOneFileScript(filePath, destPath)

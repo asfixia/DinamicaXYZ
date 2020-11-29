@@ -397,20 +397,10 @@ class WMSCapabilities:
 
     @staticmethod
     def updateXMLQGIS(directory, layer, layerTitle, layerAttr, maxZoom, downloadLink):
-        # #extents, projection
-        # projMaxX = layer.extent().xMaximum()
-        # projMinX = layer.extent().xMinimum()
-        # projMaxY = layer.extent().yMaximum()
-        # projMinY = layer.extent().yMinimum()
-        # llExtent = UTILS.getMapExtent(layer, QgsCoordinateReferenceSystem('EPSG:4326'))
-        # latMaxX = llExtent.xMaximum()
-        # latMinX = llExtent.xMinimum()
-        # latMaxY = llExtent.yMaximum()
-        # latMinY = llExtent.yMinimum()
         isShapefile = (isinstance(layer, QgsVectorLayer))
-        layerExtents = None #ignored
-        layerMercatorExtents = None #ignored
-        return WMSCapabilities.updateXML(directory, None, None, isShapefile, layerTitle, layerAttr, maxZoom, downloadLink)
+        layerExtents = layer.extent()
+        layerMercatorExtents = UTILS.getMapExtent(layer, QgsCoordinateReferenceSystem('EPSG:4326'))
+        return WMSCapabilities.updateXML(directory, layerExtents, layerMercatorExtents, isShapefile, layerTitle, layerAttr, maxZoom, downloadLink)
 
     @staticmethod
     def updateXMLDinamica(directory, layerExtents, layerMercatorExtents, isShapefile, layerTitle, layerAttr, maxZoom, downloadLink):
@@ -423,18 +413,17 @@ class WMSCapabilities:
 
         filename = UTILS.normalizeName(layerTitle) #layer Name no qgis
 
-        assert isinstance(layerExtents, WMSBBox) and isinstance(layerMercatorExtents, WMSBBox)
 
         # #extents, projection
-        # projMaxX = layer.extent().xMaximum()
-        # projMinX = layer.extent().xMinimum()
-        # projMaxY = layer.extent().yMaximum()
-        # projMinY = layer.extent().yMinimum()
+        projMaxX = layerExtents.xMaximum()
+        projMinX = layerExtents.xMinimum()
+        projMaxY = layerExtents.yMaximum()
+        projMinY = layerExtents.yMinimum()
         # llExtent = UTILS.getMapExtent(layer, QgsCoordinateReferenceSystem('EPSG:4326'))
-        # latMaxX = llExtent.xMaximum()
-        # latMinX = llExtent.xMinimum()
-        # latMaxY = llExtent.yMaximum()
-        # latMinY = llExtent.yMinimum()
+        latMaxX = layerMercatorExtents.xMaximum()
+        latMinX = layerMercatorExtents.xMinimum()
+        latMaxY = layerMercatorExtents.yMaximum()
+        latMinY = layerMercatorExtents.yMinimum()
         # isShapefile = (isinstance(layer, QgsVectorLayer))
 
 

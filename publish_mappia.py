@@ -124,11 +124,14 @@ def writeLegendJson(mapDir, legendObj):
 def getLegendFromPath(sldPath):
     return readLegend(sldPath)
 
-def publishMaps(gitExe, ghUser, ghPassword, mustAskUser, gitRepository, outputDir, input_file, layerAttr, operation, max_zoom, downloadLink, cellType, nullValue, openInBrowser, legendObj, filenameTitle):
+def publishMaps(gitExe, ghUser, ghPassword, mustAskUser, ghRepository, outputDir, input_file, layerAttr, operation, max_zoom, downloadLink, cellType, nullValue, openInBrowser, legendObj, filenameTitle):
     gitExe = gitExe if os.path.isfile(gitExe) else UTILS.which("git.exe")  # Danilo testar qnd não acha o git.exe
     foundGit = ''
-    gitExe = GitHub.findGitExe(gitExe, foundGit, mustAskUser)
+    feedback = Feedback()
+    gitExe = GitHub.findGitExe(gitExe, foundGit, feedback, mustAskUser)
     checkGitExecutable(gitExe)
+    if gitExe:
+        GitHub.prepareEnvironment(gitExe)
     Feedback.pushConsoleInfo("Git executable path found: " + gitExe)
     ghUser, ghPassword = GitHub.getGitCredentials(ghUser, ghPassword, mustAskUser)
     if ghUser is None or ghPassword is None:
@@ -136,13 +139,14 @@ def publishMaps(gitExe, ghUser, ghPassword, mustAskUser, gitRepository, outputDi
         exit(1)
     Feedback.pushConsoleInfo("Authentication Confirmed: " + gitExe)
 
-    if not GitHub.existsRepository(ghUser, gitRepository) and not GitHub.createRepo(gitRepository, ghUser, ghPassword, Feedback()):
+    if ((not GitHub.existsRepository(ghUser, ghRepository, ghPassword) and not GitHub.createRepo(ghRepository, ghUser, ghPassword, outputDir, Feedback()))
+            or (GitHub.existsRepository(ghUser, ghRepository, ghPassword) and not GitHub.isRepositoryInitialized(ghUser, ghRepository)
+                and not GitHub.initializeRepository(outputDir, ghUser, ghRepository, ghPassword, feedback))):
         QMessageBox.error(
-            "Error: Failed to create the repository " + gitRepository + ".\nPlease create a one at: https://github.com/new")
+            "Error: Failed to create the repository " + ghRepository + ".\nPlease create a one at: https://github.com/new")
         exit(1)
 
-    GitHub.prepareEnvironment(gitExe)
-    if not GitHub.isOptionsOk(outputDir, ghUser, gitRepository, Feedback(), ghPassword, mustAskUser):
+    if not GitHub.isOptionsOk(outputDir, ghUser, ghRepository, Feedback(), ghPassword, mustAskUser):
         QMessageBox.error("Error: Canceling the execution, please select another output folder.")
         exit(1)
 
@@ -158,9 +162,9 @@ def publishMaps(gitExe, ghUser, ghPassword, mustAskUser, gitRepository, outputDi
     layerExtents = WMSBBox(*GDAL_UTILS.getExtent(input_file))
     layerMercatorExtents = WMSBBox(*GDAL_UTILS.getExtent(input_file, 4326))
     WMSCapabilities.updateXML(outputDir, layerExtents, layerMercatorExtents, False, layerTitle, layerAttr, max_zoom, downloadLink)
-    GitHub.publishTilesToGitHub(outputDir, ghUser, gitRepository, Feedback(), version, ghPassword)
+    GitHub.publishTilesToGitHub(outputDir, ghUser, ghRepository, Feedback(), version, ghPassword)
     if openInBrowser:
-        storeUrl = GitHub.getGitUrl(ghUser, gitRepository)
+        storeUrl = GitHub.getGitUrl(ghUser, ghRepository)
         curMapsUrl = "https://maps.csr.ufmg.br/calculator/?queryid=152&storeurl=" + storeUrl + "/&remotemap=" + "GH:" + layerTitle + ";" + layerAttr
         webbrowser.open_new(curMapsUrl)
     # #Gera Thumbnail?
@@ -195,17 +199,21 @@ if isDinamica:
     legendObj = prepareLegend(csvInput)
     print("isDinamica")
 else:
-    gitRepository = 'Mappia_Example_p6'
+    gitRepository = 'Mappia_Example_p6asdaz'
     max_zoom = 6
     outputDir = 'C:\\Users\\Danilo\\AppData\\Local\\Temp\\outputDir\\'
-    input_file = "F:\\Danilo\\Trampo\\data_dir\\data\\teste\\iyield_rubber2.tif"  # iyield_rubber.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\teste\\byield_rubber.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.vrt"#"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\prodes\\prodes.vrt" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.tif"
-    sldPath = 'I:\\Danilo\\Trampo\\data_dir\\data\\laurel\\land_use_1992_2015\\land_use_1992_2015_7.sld'
+    input_file = "E:\\Danilo\\Trampo\\data_dir\\data\\teste\\iyield_rubber2.tif"  # iyield_rubber.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\teste\\byield_rubber.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.vrt"#"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.tif" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\prodes\\prodes.vrt" #"F:\\Danilo\\Trampo\\data_dir\\data\\remanescentes_florestais_desmatamento\\brasil\\perda_cobertura_vegetal_ano_hansen\\lossyear.tif"
+    sldPath = 'E:\\Danilo\\Trampo\\data_dir\\data\\laurel\\land_use_1992_2015\\land_use_1992_2015_7.sld'
     legendObj = getLegendFromPath(sldPath)
     realFileName = 'land_use_1992_2015_7'
     print("isNotDinamica")
 
 # if __name__ == '__main__':
 # realFileName
+
+curUser = 'asfixia'
+ghPassword = '9e9805573b5af294e24dd50caf6e1fda9ad56a92'
+gitExe = 'C:\\Users\\Danilo\\AppData\\Local\\Temp\\tmpi3pm8k1v\\portablegit\\mingw64\\bin\\git.exe'
 publishMaps(gitExe, curUser, ghPassword, mustAskUser, gitRepository, outputDir, input_file, layerAttr, operation, max_zoom, downloadLink, cellType, nullValue, openInBrowser, legendObj, realFileName)
 
 try:
